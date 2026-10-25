@@ -25,6 +25,7 @@
 | [Myriad-MoE-E2B](https://github.com/aifeifei798/Myriad-MoE-E2B) | Gemma 4 文本底座 | 模型是 **Heretic-Scalpel-DualBig-2B**：分层双核 MoE（dual-core）+ **1,120 个微专家**；仓里放的是它的训练代码，权重在 HF | 仓内目前只有一个 HF 权重链接 | 📦 训练代码 |
 | [Gemma-4-12B Myriad 变体](https://github.com/aifeifei798/gemma-4-12B-it-qat-q4_0-unquantized-MoE) | Gemma-4-12B（冻结） | 大底座上只嫁接 18–29 层（16 clan × 16 LITTLE，适配器 405.1M），验证「冻结大模型 + 稀疏适配器」这条路 | v3（28k 数据、5205 步）：macro Top-1 **66.2%**（随机 12.5%）、clan Top-1 **45.6%**（随机 6.25%）、val LM **1.35**；峰值 ~13 GB，24 GB 卡可跑 | ✅ 已验证（v3） |
 | [myriad-qwen3.5-0.8b](https://github.com/aifeifei798/myriad-qwen3.5-0.8b) | Qwen3.5-0.8B | 另一套分类学：8 Macro × 16 Clan × 256 Micro + 前额叶意图投影（LoRA r=64），把「路由什么」从层/簇改成语义层级 | 推理显存 **< 1.8 GB**，未选专家严格 ΔW≡0 | 🟡 探索中（新分类学） |
+| —（未开仓） | `q_proj` / `o_proj` | 把专家做成 **Q/O 投影上的 LoRA**（而不是 FFN 专家），先看单个 LoRA 能不能稳定承载一个域，再往上组专家 | **单 LoRA 已成功**；多 LoRA 组合与路由还在验证 | 🟡 验证中 |
 
 ## 二、Heretic-Scalpel 线（三档适配器）
 
@@ -62,6 +63,8 @@
 | 来源 | 落点 | 结果 |
 | :--- | :--- | :--- |
 | ABS 门控（幅值判据 + tanh 软拐点，Harmonic-LLM 原型） | [ComfyUI-FeiFei](https://github.com/aifeifei798/ComfyUI-FeiFei) → `harmonic_eq_node.py` | **有效**。作为 MODEL patch 装在 CFG 合成预测上：高拐点限幅治高 CFG 的过曝 / 死黑 / 蜡感，低拐点（AGC）提暗部；健康区逐位不变，权重复原 bit-exact；SD1.5 / SDXL / Flux / 任意 DiT 通用（走 CFG 槽而非 attn2 patch） |
+
+> 同一条 `q_proj` / `o_proj` 上还挂着另一支进行中的实验：**把专家直接做成 Q/O 的 LoRA**，而不只是在这里判幅值（见第一节最后一行）。两支共用同一组投影，结论互相参考。
 
 ## 五、支撑件
 
@@ -106,12 +109,13 @@
 - **后端归属**：25K 的推理服务目前不在仓里，整合时要不要收进来。
 - **ABS 门控接在哪一层**：只压 `q/o` 的离群幅值，还是直接当专家选择的判据（`|x|` 超阈值才放行某组专家）。
 - **幅值判据 vs 频域判据**：`|x|`（Harmonic-LLM）和 DCT 能量（flashcodec-kv）现在一个用来限幅、一个用来压缩，还没在路由信号上正面对照过。
+- **Q/O LoRA 专家 vs FFN 微专家**：单 LoRA 已经能稳定承载一个域，接下来要回答的是多 LoRA 之间的相互干扰，以及两条路在显存、吞吐、路由可分性上的取舍。
 
 ## 九、维护约定
 
 - 新实验：新开仓 → 这里加一行（变量 / 结果 / 状态），**不改旧行**。
 - 结论被推翻：旧行标「已修正」，另起一行写新结论，保留时间顺序。
-- 只在本地跑、没推上来的分支不入表，推了再补行。
+- 还没开仓的实验也先占一行（标 🟡 验证中），开了仓再补链接——台账的作用就是记住还没落地的东西；但没跑出数的想法不进结论区。
 - 每行都要能指回一个数值来源（README / 脚本 / checkpoint），否则不写数字。
 
 ## 十、时间线
