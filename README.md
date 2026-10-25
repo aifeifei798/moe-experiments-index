@@ -6,7 +6,7 @@
 
 范围：MoE 架构、路由与门控相关的全部实验——包括门控信号本身的研究（ABS 门控、幅值/频域判据），不要求每个仓长得像 MoE。
 
-状态图例：✅ 已验证（有可复现数字） · 🟡 进行中 / 探索 · ⬜ 产物或说明未齐
+状态图例：✅ 已验证（有可复现数字） · 🟡 进行中 / 探索 · 📦 训练代码 / 权重 · ⬜ 说明未齐
 
 ---
 
@@ -18,9 +18,9 @@
 | :--- | :--- | :--- | :--- | :--- |
 | [BigLittle-MoE](https://github.com/aifeifei798/BigLittle-MoE) | Qwen3-0.6B | 专家放主机 RAM、按 token 流式搬运，验证「显存墙」能否被绕过 | 专家池 bf16 共 56 MB（~64 KB/个）；Top-1 **36.5 t/s**、Top-8 22.4 t/s；单专家搬运 0.214 ms（p50）；v1.0.1 修正了旧版把吞吐算成 `45/elapsed` 的错 | ✅ 已验证（v1.0.1） |
 | [DualBigLittle-MoE](https://github.com/aifeifei798/DualBigLittle-MoE) | 自己的分层结构 | 大核拆成文理双核（Arts 冻结 / STEM 克隆低学习率），看双核能否隔离跨域负迁移 | 验证集 PPL：Code 7.58→**6.80**、Math 6.27→**5.63**、Arts 8.90→**8.20**（均 −9.5%）；896/896 专家非零、0/28 层饿死 | ✅ 已验证（v5_auxfix） |
-| [Myriad-MoE](https://github.com/aifeifei798/Myriad-MoE) | —（待补） | 20,000 专家 / 1.25 GB 主机内存，独立方向，README 尚未写 | 仓内只有一句 "20,000 Experts. 1.25 GB Host RAM. Zero PCIe Choke." | ⬜ 说明待补 |
-| [Myriad-MoE-25K-Micro-Experts](https://github.com/aifeifei798/Myriad-MoE-25K-Micro-Experts) | —（待补） | 28 层 × 20 簇 × 45 个 LoRA = **25,200 专家**，1.54 GB pinned RAM，簇拓扑 + 热插拔 + `/catch` `/cage` `/snipe` 神经外科指令 | host 流式 **24.9 t/s** vs 显存常驻 23.8 t/s（**0% 吞吐损失**）；换卡带 44 ms；训练靠低秩张量收缩省 97.6% 显存 → **10 GB / 9.8 samples/s**；领域反转 Arts 79.1% vs STEM 20.9% | ✅ 已验证 |
-| [Myriad-MoE-E2B](https://github.com/aifeifei798/Myriad-MoE-E2B) | —（待补） | 独立方向，README 尚未写 | 仓里只有一个 HF 权重链接 | ⬜ 说明待补 |
+| [Myriad-MoE](https://github.com/aifeifei798/Myriad-MoE) | — | 微专家规模拉到 **20,000**，pinned RAM 1.25 GB | 仓内只有一句 "20,000 Experts. 1.25 GB Host RAM. Zero PCIe Choke." | ⬜ 说明未展开 |
+| [Myriad-MoE-25K-Micro-Experts](https://github.com/aifeifei798/Myriad-MoE-25K-Micro-Experts) | — | 28 层 × 20 簇 × 45 个 LoRA = **25,200 专家**，1.54 GB pinned RAM，簇拓扑 + 热插拔 + `/catch` `/cage` `/snipe` 神经外科指令 | host 流式 **24.9 t/s** vs 显存常驻 23.8 t/s（**0% 吞吐损失**）；换卡带 44 ms；训练靠低秩张量收缩省 97.6% 显存 → **10 GB / 9.8 samples/s**；领域反转 Arts 79.1% vs STEM 20.9% | ✅ 已验证 |
+| [Myriad-MoE-E2B](https://github.com/aifeifei798/Myriad-MoE-E2B) | Gemma 4 文本底座 | 模型是 **Heretic-Scalpel-DualBig-2B**：分层双核 MoE（dual-core）+ **1,120 个微专家**；仓里放的是它的训练代码，权重在 HF | 仓内目前只有一个 HF 权重链接 | 📦 训练代码 |
 | [Gemma-4-12B Myriad 变体](https://github.com/aifeifei798/gemma-4-12B-it-qat-q4_0-unquantized-MoE) | Gemma-4-12B（冻结） | 大底座上只嫁接 18–29 层（16 clan × 16 LITTLE，适配器 405.1M），验证「冻结大模型 + 稀疏适配器」这条路 | v3（28k 数据、5205 步）：macro Top-1 **66.2%**（随机 12.5%）、clan Top-1 **45.6%**（随机 6.25%）、val LM **1.35**；峰值 ~13 GB，24 GB 卡可跑 | ✅ 已验证（v3） |
 | [myriad-qwen3.5-0.8b](https://github.com/aifeifei798/myriad-qwen3.5-0.8b) | Qwen3.5-0.8B | 另一套分类学：8 Macro × 16 Clan × 256 Micro + 前额叶意图投影（LoRA r=64），把「路由什么」从层/簇改成语义层级 | 推理显存 **< 1.8 GB**，未选专家严格 ΔW≡0 | 🟡 探索中（新分类学） |
 
@@ -32,6 +32,8 @@
 | :--- | :--- | :--- | :--- | :--- |
 | [Heretic-Scalpel-TriTier-E2B](https://github.com/aifeifei798/Heretic-Scalpel-TriTier-E2B) | Gemma 4 E2B | 双路由器 + dense STEM 核（r=64）+ 32 个 rank-16 微专家（96 KB/个） | 峰值 **17.4 GB**、**9.1 samples/s**（5090 D）；第 50 步 LM 稳定在 **~1.17** 且路由分化成型 | ✅ 已验证（单次训练曲线） |
 | [Heretic-Scalpel-Swarm-Forge](https://github.com/aifeifei798/Heretic-Scalpel-Swarm-Forge) | TriTier-E2B（底座未公开） | 抽成框架：`forge_core` 纯 ML 库 + FastAPI + React | 修掉 8 个实质 bug（因果 LM 错位、N<32 路由越界、均衡损失梯度恒 0、251K 词表 logits 尖峰、导出切源码、数据集唯一率造假…）；200 步 / 6400 条：held-out LM **2.673 → 2.281** | 🟡 工具链进行中 |
+
+> 命名交叉：`Myriad-MoE-E2B` 仓里的模型其实叫 **Heretic-Scalpel-DualBig-2B**（Gemma 4 文本底座、1,120 微专家），训练代码就放在那个仓；两个系列的模型命名是通的，只是仓名沿用了 Myriad 的名字。
 
 ## 三、从零复现线（架构对照）
 
@@ -86,7 +88,7 @@
 
 ## 八、还没定的事（整合前要回答）
 
-- **哪些方向要合、哪些保持独立**：25K 的簇拓扑、8×16×256 语义分类学、TriTier 的三档适配器，目前是三套互不兼容的骨架，不是同一个东西的三个版本。
+- **哪些方向要合、哪些保持独立**：25K 的簇拓扑、8×16×256 语义分类学、TriTier 的三档适配器、DualBig-2B 的「双核 + 1,120 专家」，目前是四套互不兼容的骨架，不是同一个东西的四个版本。
 - **评测坐标系**：各块口径不同（分层等距 / 取前 n 条 / 训练切片 / 验证集），整合前得先统一到一套，否则没法判断哪个方向值得带进最终版。
 - **μP 维度自适应缩放**能否跨底座迁移（0.6B → 8B / 12B），还是每个底座都要重标定。
 - **交付形态**：走 `bake_*` 烘成 stock 权重，还是保留 host 流式层 + 自定义 modeling。
@@ -108,7 +110,7 @@
 | 09-28 | BigLittle-MoE | 分层大核 + 896 微专家的第一版 |
 | 09-28 | DualBigLittle-MoE | 拆成文理双核 |
 | 09-29 | Myriad-MoE | 20,000 专家 / 1.25 GB 主机内存 |
-| 09-29 | Myriad-MoE-E2B | E2B 底座（仅权重链接） |
+| 09-29 | Myriad-MoE-E2B | Heretic-Scalpel-DualBig-2B 的训练代码（1,120 微专家） |
 | 09-30 | Myriad-MoE-25K-Micro-Experts | 25,200 专家 + 流式 + 热插拔 |
 | 10-01 | Heretic-Scalpel-TriTier-E2B | 三档适配器范式 |
 | 10-02 | Heretic-Scalpel-Swarm-Forge | 抽成框架 |
