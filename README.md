@@ -1,26 +1,26 @@
 # MoE Experiments Index
 
-> 个人实验台账，不是论文，也不是导航页。**每个仓库 = 一次受控变量实验**，历史全部保留、不做合并。
-> 这里只记三件事：这块改了什么变量、跑出了什么数、现在什么状态。
+> 个人实验台账，不是论文，也不是导航页。**每个仓库 = 一个独立方向**，历史全部保留、不做合并，彼此之间没有取代关系。
+> 这里只记三件事：这块自己在试什么、跑出了什么数、现在什么状态。
 > 半年后要整合时，从这张表往下点，不用翻 40 多个 README。
 
-状态图例：✅ 已验证（有可复现数字） · 🟢 主线候选 · 🟡 进行中 / 探索 · ⬜ 只有产物 · ⬛ 已被取代
+状态图例：✅ 已验证（有可复现数字） · 🟡 进行中 / 探索 · ⬜ 产物或说明未齐
 
 ---
 
-## 一、Big-Little → Myriad 线（消费级显存墙）
+## 一、分层大核 + 微专家方向群
 
-核心问题：专家体积换容量必然撞显存，能不能让专家住在主机内存里、按 token 流式搬运，且不掉吞吐。
+共同背景：专家体积换容量必然撞显存。下面每个仓解决的是这条背景下的**不同问题**，不是同一个项目的版本迭代——各自口径不同，数字不能横向排名，也没有谁取代谁。
 
-| 仓库 | 基线 | 改的变量 | 关键结果 | 状态 |
+| 仓库 | 起点 | 这个块自己在试什么 | 关键结果 | 状态 |
 | :--- | :--- | :--- | :--- | :--- |
-| [BigLittle-MoE](https://github.com/aifeifei798/BigLittle-MoE) | Qwen3-0.6B | 冻结大核 + 896 个 rank-16 LoRA（32×28 层）放主机 RAM 流式；路由头只占 1.75 MB 显存 | 专家池 bf16 共 56 MB（~64 KB/个）；Top-1 **36.5 t/s**、Top-8 22.4 t/s；单专家搬运 0.214 ms（p50）；v1.0.1 修正了旧版把吞吐算成 `45/elapsed` 的错 | ✅ 已验证（基线块） |
-| [DualBigLittle-MoE](https://github.com/aifeifei798/DualBigLittle-MoE) | 上一块 | 双核：Arts 冻结原版 MLP + STEM 克隆核低学习率微调，896 LoRA 压到 54 MiB | 验证集 PPL：Code 7.58→**6.80**、Math 6.27→**5.63**、Arts 8.90→**8.20**（均 −9.5%）；896/896 专家非零、0/28 层饿死 | ✅ 已验证（v5_auxfix） |
-| [Myriad-MoE](https://github.com/aifeifei798/Myriad-MoE) | DualBigLittle | 专家规模推到 20,000，pinned RAM 1.25 GB | README 空，仅剩一句 "Zero PCIe Choke" | ⬛ 已被 25K 取代 |
-| [Myriad-MoE-25K-Micro-Experts](https://github.com/aifeifei798/Myriad-MoE-25K-Micro-Experts) | 同上 | 28 层 × 20 簇 × 45 个 LoRA = **25,200 专家**，1.54 GB pinned RAM，热插拔 | host 流式 **24.9 t/s** vs 显存常驻 23.8 t/s（**0% 吞吐损失**）；换卡带 44 ms；训练靠低秩张量收缩省 97.6% 显存 → **10 GB / 9.8 samples/s**；领域反转 Arts 79.1% vs STEM 20.9% | 🟢 主线候选（最完整） |
-| [Myriad-MoE-E2B](https://github.com/aifeifei798/Myriad-MoE-E2B) | 25K | 换 E2B 底座 | 仓里只有一个 HF 权重链接 | ⬜ 仅权重 |
-| [Gemma-4-12B Myriad 变体](https://github.com/aifeifei798/gemma-4-12B-it-qat-q4_0-unquantized-MoE) | Gemma-4-12B（冻结） | 只在 18–29 层嫁接 16 clan × 16 LITTLE，适配器 405.1M，true Top-K 稀疏 | v3（28k 数据、5205 步）：macro Top-1 **66.2%**（随机 12.5%）、clan Top-1 **45.6%**（随机 6.25%）、val LM **1.35**；峰值 ~13 GB，24 GB 卡可跑 | ✅ 已验证（v3） |
-| [myriad-qwen3.5-0.8b](https://github.com/aifeifei798/myriad-qwen3.5-0.8b) | Qwen3.5-0.8B | 分类学换血：8 Macro × 16 Clan × 256 Micro + 前额叶意图投影（LoRA r=64） | 推理显存 **< 1.8 GB**，未选专家严格 ΔW≡0 | 🟡 探索中（新分类学） |
+| [BigLittle-MoE](https://github.com/aifeifei798/BigLittle-MoE) | Qwen3-0.6B | 专家放主机 RAM、按 token 流式搬运，验证「显存墙」能否被绕过 | 专家池 bf16 共 56 MB（~64 KB/个）；Top-1 **36.5 t/s**、Top-8 22.4 t/s；单专家搬运 0.214 ms（p50）；v1.0.1 修正了旧版把吞吐算成 `45/elapsed` 的错 | ✅ 已验证（v1.0.1） |
+| [DualBigLittle-MoE](https://github.com/aifeifei798/DualBigLittle-MoE) | 自己的分层结构 | 大核拆成文理双核（Arts 冻结 / STEM 克隆低学习率），看双核能否隔离跨域负迁移 | 验证集 PPL：Code 7.58→**6.80**、Math 6.27→**5.63**、Arts 8.90→**8.20**（均 −9.5%）；896/896 专家非零、0/28 层饿死 | ✅ 已验证（v5_auxfix） |
+| [Myriad-MoE](https://github.com/aifeifei798/Myriad-MoE) | —（待补） | 20,000 专家 / 1.25 GB 主机内存，独立方向，README 尚未写 | 仓内只有一句 "20,000 Experts. 1.25 GB Host RAM. Zero PCIe Choke." | ⬜ 说明待补 |
+| [Myriad-MoE-25K-Micro-Experts](https://github.com/aifeifei798/Myriad-MoE-25K-Micro-Experts) | —（待补） | 28 层 × 20 簇 × 45 个 LoRA = **25,200 专家**，1.54 GB pinned RAM，簇拓扑 + 热插拔 + `/catch` `/cage` `/snipe` 神经外科指令 | host 流式 **24.9 t/s** vs 显存常驻 23.8 t/s（**0% 吞吐损失**）；换卡带 44 ms；训练靠低秩张量收缩省 97.6% 显存 → **10 GB / 9.8 samples/s**；领域反转 Arts 79.1% vs STEM 20.9% | ✅ 已验证 |
+| [Myriad-MoE-E2B](https://github.com/aifeifei798/Myriad-MoE-E2B) | —（待补） | 独立方向，README 尚未写 | 仓里只有一个 HF 权重链接 | ⬜ 说明待补 |
+| [Gemma-4-12B Myriad 变体](https://github.com/aifeifei798/gemma-4-12B-it-qat-q4_0-unquantized-MoE) | Gemma-4-12B（冻结） | 大底座上只嫁接 18–29 层（16 clan × 16 LITTLE，适配器 405.1M），验证「冻结大模型 + 稀疏适配器」这条路 | v3（28k 数据、5205 步）：macro Top-1 **66.2%**（随机 12.5%）、clan Top-1 **45.6%**（随机 6.25%）、val LM **1.35**；峰值 ~13 GB，24 GB 卡可跑 | ✅ 已验证（v3） |
+| [myriad-qwen3.5-0.8b](https://github.com/aifeifei798/myriad-qwen3.5-0.8b) | Qwen3.5-0.8B | 另一套分类学：8 Macro × 16 Clan × 256 Micro + 前额叶意图投影（LoRA r=64），把「路由什么」从层/簇改成语义层级 | 推理显存 **< 1.8 GB**，未选专家严格 ΔW≡0 | 🟡 探索中（新分类学） |
 
 ## 二、Heretic-Scalpel 线（三档适配器）
 
@@ -72,11 +72,11 @@
 
 ## 七、还没定的事（整合前要回答）
 
-- **骨架选谁**：25K（20 簇 × 45 专家）还是 8×16×256 分类学？前者数据最硬，后者结构最整齐。
-- **μP 维度自适应缩放**能否从 0.6B 直接迁到 8B+，还是需要重标定。
-- **规模-收益拐点**：32 专家（TriTier）→ 896（BigLittle）→ 25,200（Myriad），哪一段开始边际收益塌陷。
+- **哪些方向要合、哪些保持独立**：25K 的簇拓扑、8×16×256 语义分类学、TriTier 的三档适配器，目前是三套互不兼容的骨架，不是同一个东西的三个版本。
+- **评测坐标系**：各块口径不同（分层等距 / 取前 n 条 / 训练切片 / 验证集），整合前得先统一到一套，否则没法判断哪个方向值得带进最终版。
+- **μP 维度自适应缩放**能否跨底座迁移（0.6B → 8B / 12B），还是每个底座都要重标定。
 - **交付形态**：走 `bake_*` 烘成 stock 权重，还是保留 host 流式层 + 自定义 modeling。
-- **后端归属**：25K 的推理服务目前不在仓里，最终要不要收进主线仓。
+- **后端归属**：25K 的推理服务目前不在仓里，整合时要不要收进来。
 
 ## 八、维护约定
 
@@ -91,15 +91,15 @@
 | :--- | :--- | :--- |
 | 09-28 | BigLittle-MoE | 分层大核 + 896 微专家的第一版 |
 | 09-28 | DualBigLittle-MoE | 拆成文理双核 |
-| 09-29 | Myriad-MoE | 专家推到 20,000 |
-| 09-29 | Myriad-MoE-E2B | 换底座，仅留权重 |
+| 09-29 | Myriad-MoE | 20,000 专家 / 1.25 GB 主机内存 |
+| 09-29 | Myriad-MoE-E2B | E2B 底座（仅权重链接） |
 | 09-30 | Myriad-MoE-25K-Micro-Experts | 25,200 专家 + 流式 + 热插拔 |
 | 10-01 | Heretic-Scalpel-TriTier-E2B | 三档适配器范式 |
 | 10-02 | Heretic-Scalpel-Swarm-Forge | 抽成框架 |
 | 10-04 | DeepSeek-Pro-Mini | 从零复现 MLA + MoE |
 | 10-05 | myriad-moe-console | 25K 的前端 |
 | 10-07 | gemma-4-12B-…-MoE | 大底座上的 16×16 嫁接 |
-| 10-10 | myriad-qwen3.5-0.8b | 换分类学（8×16×256） |
+| 10-10 | myriad-qwen3.5-0.8b | 8×16×256 语义分类学 |
 | 10-22 | Mini-Architecture | 最小 V4.1 对照实验 |
 
 ---
