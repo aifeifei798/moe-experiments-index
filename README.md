@@ -53,6 +53,14 @@
 | [Harmonic-LLM](https://github.com/aifeifei798/Harmonic-LLM) | gemma-4-12B 的 `q_proj` / `o_proj` | 一个 forward hook 做软拐点限幅：按块峰值 / 中位 RMS 判幅值离群，只压超过 ceiling 的元素，权重和 calibration 都不动（已发 PyPI） | 离群重尾但极稀：p99 为 17.9 / 35.1（Q/O），max 95.6 / 286.5；默认 `threshold=64` 只碰 **0.001%（Q）/ 0.07%（O）** 的块，峰值中位降 **−21.2% / −15.8%**；代价 NLL 0.173→0.293、吞吐 21.0→15.0 t/s（0.71×）；**sham 对照推翻原设想——起作用的是 ceiling 不是块选择**（随机块 KL 0.0015 vs 门控 0.092） | ✅ 已验证（结论与设想相反，已写进 README） |
 | [flashcodec-kv](https://github.com/aifeifei798/flashcodec-kv) | transformers 5.x `Cache` | 把 `(B,H,S,D)` 的 seq 轴当图像：JPEG 式分块 DCT 只留最低频 K 个系数 + int8；PNG 式锚点 + 一阶差分走无损；验证「频域能量集中」能不能直接换成显存 | `k=2` + int8 压到原始 KV 的 **6.6%（15×）**、PSNR 46.9 dB；一阶差分方差塌 **30×**；安全默认 `keep_freqs=8` + int8 ≈ **52% 体积 / 稠密模型 +2% ppl**；无损档位逐位一致但只省 ~1.9×（存储）；per-token 解码在 S=4096 慢 ~170× | ✅ 已验证（含负结果：k=2 稠密模型崩） |
 
+### 溢出：同一套判据搬到扩散采样
+
+判据抽象出来之后就不再属于 MoE，这是它第一次跨域验证有效的记录。
+
+| 来源 | 落点 | 结果 |
+| :--- | :--- | :--- |
+| ABS 门控（幅值判据 + tanh 软拐点，Harmonic-LLM 原型） | [ComfyUI-FeiFei](https://github.com/aifeifei798/ComfyUI-FeiFei) → `harmonic_eq_node.py` | **有效**。作为 MODEL patch 装在 CFG 合成预测上：高拐点限幅治高 CFG 的过曝 / 死黑 / 蜡感，低拐点（AGC）提暗部；健康区逐位不变，权重复原 bit-exact；SD1.5 / SDXL / Flux / 任意 DiT 通用（走 CFG 槽而非 attn2 patch） |
+
 ## 五、支撑件
 
 | 仓库 | 作用 | 状态 |
@@ -76,6 +84,7 @@
 11. **幅值离群是重尾但极稀，阈值必须放高**：Q/O 的 p99 已经到 17.9 / 35.1，阈值落进 2–8 就是在切模型正在用的激活；安全点在 p99.9 之上（默认 64）。
 12. **门控的收益可能来自 ceiling 而不是「选得准」**：随机块 sham 的 KL 比真门控低 60×（0.0015 vs 0.092）。ABS 门控上线前必须先跑这个对照，否则会把「限幅降损」记成「路由有效」。
 13. **频域压缩的崩塌点在低码率**：KV 上 `keep_freqs=2` 在稠密模型直接崩，`keep_freqs=8 + int8` 才是安全点（52% 体积 / +2% ppl）。
+14. **幅值判据是通用算子，不是 MoE 专用**：同一套「robust 参考电平 + tanh 软拐点」原样搬到扩散模型的 CFG 合成预测上（`harmonic_eq_node.py`）就治住了高 CFG 过曝——说明当初抽象出的是判据，不是路由代码。
 
 ## 七、评测口径（这些数字不能混用）
 
