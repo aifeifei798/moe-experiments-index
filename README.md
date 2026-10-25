@@ -177,6 +177,8 @@
 
 > 这份台账用 EQ / 整形 / 母带这些词，因为是自己看的。哪天要给外面写，再按上表换成 `logit soft-capping` / `per-channel gain` / `activation shaping` 就行——表就是干这个用的。
 
+📄 四篇的详细拆解（公式、动机、和这里的差别、能立刻做的对照、别人会问的三个问题）：[prior-art-qo-shaping.md](prior-art-qo-shaping.md)
+
 ## 五、当前架构：三层解耦（设计记录）
 
 这里不记结果，记结构。目的是换分类、换子模型、换底座时照着检查一遍，不用重新推。
